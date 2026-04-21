@@ -45,7 +45,7 @@ export default function Navbar() {
                 <Heart className="text-white" size={18} fill="white" />
               </div>
               <span className="font-display font-bold text-xl text-text-primary hidden sm:block">
-                Sadaqah<span className="text-primary">Hub</span>
+                Veri<span className="text-primary">Kind</span>
               </span>
             </Link>
           </div>

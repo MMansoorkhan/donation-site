@@ -7,7 +7,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, FolderOpen, DollarSign, Users, ExternalLink, AlertCircle,
-  X, ImageIcon, CheckCircle, TrendingUp
+  X, CheckCircle
 } from 'lucide-react';
 import { useStore, type ProjectCategory } from '../lib/store';
 import { formatCurrency, calcProgress, getCategoryLabel, formatDate } from '../lib/utils';
@@ -54,9 +54,8 @@ export default function CollectorDashboard() {
     setError('');
     setLoading(true);
 
-    await new Promise((r) => setTimeout(r, 800));
-
-    const result = createProject({
+    // 👇 FIX: Added 'await' here
+    const result = await createProject({
       title,
       description,
       goalAmount: parseFloat(goalAmount) || 0,

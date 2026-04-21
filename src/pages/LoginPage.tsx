@@ -23,10 +23,11 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
-    // Simulate network delay
+    // Simulate network delay (You can actually delete this now if you want, since Firebase has a real delay!)
     await new Promise((r) => setTimeout(r, 600));
 
-    const result = login(email, password, role);
+    // 👇 THIS IS THE FIX: Added 'await' right here
+    const result = await login(email, password, role);
     setLoading(false);
 
     if (result.success) {
@@ -84,7 +85,7 @@ export default function LoginPage() {
             </motion.div>
           )}
 
-          {/* Demo credentials hint */}
+          {/* Demo credentials hint (You can delete this box once you have real users!) */}
           <div className="p-3 bg-blue-50 text-info text-sm rounded-xl mb-4">
             <p className="font-medium mb-1">Demo Credentials (Donor):</p>
             <p className="text-xs">Email: ahmed@example.com · Any password</p>

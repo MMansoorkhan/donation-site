@@ -134,8 +134,8 @@ export const useStore = create<AppStore>((set, get) => ({
   // 1. DATABASE & AUTH INITIALIZATION
   // ==========================================
   initDatabase: () => {
-    // A. Listen for Auth Changes (Keeps user logged in on refresh)
-    onAuthStateChanged(auth, async (firebaseUser) => {
+    // Add : any to firebaseUser
+    onAuthStateChanged(auth, async (firebaseUser: any) => {
       if (firebaseUser) {
         const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
         if (userDoc.exists()) {
@@ -146,20 +146,18 @@ export const useStore = create<AppStore>((set, get) => ({
       }
     });
 
-    // B. Listen for real-time Project updates
-    onSnapshot(collection(db, 'projects'), (snapshot) => {
-      const liveProjects = snapshot.docs.map(doc => doc.data() as Project);
-      // If database has projects, show them. Otherwise fallback to seed data.
+    // Add : any to snapshot and doc
+    onSnapshot(collection(db, 'projects'), (snapshot: any) => {
+      const liveProjects = snapshot.docs.map((doc: any) => doc.data() as Project);
       set({ projects: liveProjects.length > 0 ? liveProjects : seedProjects });
     });
 
-    // C. Listen for real-time Donation updates
-    onSnapshot(collection(db, 'donations'), (snapshot) => {
-      const liveDonations = snapshot.docs.map(doc => doc.data() as DonationRecord);
+    // Add : any to snapshot and doc
+    onSnapshot(collection(db, 'donations'), (snapshot: any) => {
+      const liveDonations = snapshot.docs.map((doc: any) => doc.data() as DonationRecord);
       set({ donations: liveDonations });
     });
   },
-
   // ==========================================
   // 2. AUTHENTICATION
   // ==========================================

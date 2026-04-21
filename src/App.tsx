@@ -2,7 +2,10 @@
 // APP - Root component with routing
 // ============================================================
 
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { useStore } from './lib/store';
+
 import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -13,6 +16,14 @@ import DonorDashboard from './pages/DonorDashboard';
 import CollectorDashboard from './pages/CollectorDashboard';
 
 export default function App() {
+  const initDatabase = useStore((state) => state.initDatabase);
+
+  // Turn on the live database connection and check for logged-in users 
+  // the exact moment the app opens in the browser.
+  useEffect(() => {
+    initDatabase();
+  }, [initDatabase]);
+
   return (
     <BrowserRouter>
       <Routes>

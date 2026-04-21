@@ -4,7 +4,7 @@
 
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Heart, ExternalLink, TrendingUp, DollarSign, Calendar } from 'lucide-react';
+import { Heart, ExternalLink, DollarSign, Calendar } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { formatCurrency, formatDate } from '../lib/utils';
 import { useEffect } from 'react';
@@ -27,8 +27,6 @@ export default function DonorDashboard() {
   // Get this donor's donations
   const myDonations = donations.filter((d) => d.donorId === currentUser.id);
   const totalDonated = myDonations.reduce((sum, d) => sum + d.amount, 0);
-  const totalFees = myDonations.reduce((sum, d) => sum + d.platformFee, 0);
-  const totalTips = myDonations.reduce((sum, d) => sum + d.tip, 0);
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
@@ -43,11 +41,10 @@ export default function DonorDashboard() {
       </motion.div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
         {[
           { label: 'Total Donated', value: formatCurrency(totalDonated), icon: DollarSign, color: 'bg-primary/10 text-primary' },
           { label: 'Donations Made', value: myDonations.length.toString(), icon: Heart, color: 'bg-rose-100 text-rose-600' },
-          { label: 'Platform Fees + Tips', value: formatCurrency(totalFees + totalTips), icon: TrendingUp, color: 'bg-blue-100 text-blue-600' },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}

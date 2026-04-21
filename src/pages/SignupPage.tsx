@@ -29,16 +29,17 @@ export default function SignupPage() {
     setError('');
     setLoading(true);
 
-    await new Promise((r) => setTimeout(r, 800));
-
     const userData = {
       name,
       email,
       role,
+      password, // 👇 FIX 1: Added password here so Firebase can use it!
       ...(role === 'collector' && { phone, idNumber, organization }),
     };
 
-    const result = signup(userData);
+    // 👇 FIX 2: Added 'await' here!
+    const result = await signup(userData);
+    
     setLoading(false);
 
     if (result.success) {
@@ -62,7 +63,7 @@ export default function SignupPage() {
             <Heart className="text-white" size={24} fill="white" />
           </div>
           <h1 className="font-display text-2xl font-bold text-text-primary">Create Account</h1>
-          <p className="text-sm text-text-muted mt-1">Join SadaqahHub and start making a difference</p>
+          <p className="text-sm text-text-muted mt-1">Join VeriKind and start making a difference</p>
         </div>
 
         {/* Card */}

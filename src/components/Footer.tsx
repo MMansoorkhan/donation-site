@@ -17,7 +17,7 @@ export default function Footer() {
                 <Heart className="text-white" size={18} fill="white" />
               </div>
               <span className="font-display font-bold text-xl">
-                Sadaqah<span className="text-primary">Hub</span>
+                Veri<span className="text-primary">Kind</span>
               </span>
             </div>
             <p className="text-sm text-text-muted leading-relaxed">
@@ -50,7 +50,7 @@ export default function Footer() {
           <div>
             <h4 className="font-semibold text-sm mb-4">Support</h4>
             <div className="space-y-2">
-              <span className="block text-sm text-text-muted">help@sadaqahhub.com</span>
+              <span className="block text-sm text-text-muted">help@verikind.com</span>
               <span className="block text-sm text-text-muted">Terms of Service</span>
               <span className="block text-sm text-text-muted">Privacy Policy</span>
             </div>
@@ -58,7 +58,7 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-border-light mt-8 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-text-muted">© 2025 SadaqahHub. All rights reserved.</p>
+          <p className="text-xs text-text-muted">© {new Date().getFullYear()} VeriKind. All rights reserved.</p>
           <p className="text-xs text-text-muted">Built with ❤️ for the Ummah</p>
         </div>
       </div>

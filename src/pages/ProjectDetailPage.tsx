@@ -67,9 +67,10 @@ export default function ProjectDetailPage() {
     }
 
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
 
-    const result = makeDonation(project.id, amount, tipAmount);
+    // 👇 FIX: Added 'await' here
+    const result = await makeDonation(project.id, amount, tipAmount);
+    
     setLoading(false);
 
     if (result.success) {

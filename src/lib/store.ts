@@ -1,10 +1,24 @@
 // ============================================================
 // ZUSTAND STORE - Central state management for the donation platform
-// Simulates Firebase Auth + Firestore with local state
+// Connected to Real Firebase Auth + Firestore
 // ============================================================
 
 import { create } from 'zustand';
-import { v4 as uuidv4 } from 'uuid';
+import { auth, db } from './firebase';
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut,
+  onAuthStateChanged
+} from 'firebase/auth';
+import { 
+  collection, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  updateDoc, 
+  onSnapshot 
+} from 'firebase/firestore';
 
 // ----- TYPE DEFINITIONS -----
 
@@ -66,16 +80,19 @@ interface AppStore {
   sidebarOpen: boolean;
   searchQuery: string;
   
-  // Auth actions
-  signup: (userData: Omit<User, 'id' | 'createdAt'>) => { success: boolean; error?: string };
-  login: (email: string, password: string, role: UserRole) => { success: boolean; error?: string };
-  logout: () => void;
+  // Database Init
+  initDatabase: () => void;
+  
+  // Auth actions (Notice the added password string to signup)
+  signup: (userData: Omit<User, 'id' | 'createdAt'> & { password?: string }) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string, role: UserRole) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
   
   // Project actions
-  createProject: (project: Omit<Project, 'id' | 'collectorId' | 'collectorName' | 'raisedAmount' | 'donors' | 'featured' | 'createdAt'>) => { success: boolean; error?: string };
+  createProject: (project: Omit<Project, 'id' | 'collectorId' | 'collectorName' | 'raisedAmount' | 'donors' | 'featured' | 'createdAt'>) => Promise<{ success: boolean; error?: string }>;
   
   // Donation actions
-  makeDonation: (projectId: string, amount: number, tip: number) => { success: boolean; error?: string };
+  makeDonation: (projectId: string, amount: number, tip: number) => Promise<{ success: boolean; error?: string }>;
   
   // UI actions
   toggleSidebar: () => void;
@@ -83,7 +100,7 @@ interface AppStore {
 }
 
 // ----- SEED DATA -----
-// Pre-populated projects so the platform looks alive
+// We keep the seed data so the UI doesn't look empty before real data is added.
 
 const seedProjects: Project[] = [
   {
@@ -91,101 +108,15 @@ const seedProjects: Project[] = [
     collectorId: 'collector-1',
     collectorName: 'Islamic Relief Fund',
     title: 'Zakaat Fund for Families in Need',
-    description: 'Help us distribute Zakaat to underprivileged families across the region. Every contribution goes directly to those who need it most, providing food, clothing, and essential supplies during difficult times.',
+    description: 'Help us distribute Zakaat to underprivileged families across the region.',
     category: 'zakaat',
     goalAmount: 50000,
     raisedAmount: 32500,
     image: '/images/community.jpg',
-    donors: [
-      { id: 'd1', donorId: 'donor-1', donorName: 'Ahmed K.', projectId: 'proj-1', projectTitle: 'Zakaat Fund for Families in Need', amount: 500, platformFee: 25, tip: 10, totalPaid: 535, createdAt: '2024-12-01' },
-      { id: 'd2', donorId: 'donor-2', donorName: 'Sara M.', projectId: 'proj-1', projectTitle: 'Zakaat Fund for Families in Need', amount: 1000, platformFee: 50, tip: 20, totalPaid: 1070, createdAt: '2024-12-05' },
-    ],
+    donors: [],
     featured: true,
     createdAt: '2024-11-15',
-  },
-  {
-    id: 'proj-2',
-    collectorId: 'collector-2',
-    collectorName: 'Umrah Assistance Foundation',
-    title: 'Sponsor Umrah for Elderly Pilgrims',
-    description: 'Many elderly Muslims dream of performing Umrah but cannot afford it. This project sponsors their journey, covering travel, accommodation, and all necessary arrangements for a blessed pilgrimage.',
-    category: 'umrah',
-    goalAmount: 75000,
-    raisedAmount: 48750,
-    image: '/images/mosque.jpg',
-    donors: [
-      { id: 'd3', donorId: 'donor-3', donorName: 'Omar H.', projectId: 'proj-2', projectTitle: 'Sponsor Umrah for Elderly Pilgrims', amount: 2000, platformFee: 100, tip: 50, totalPaid: 2150, createdAt: '2024-12-10' },
-    ],
-    featured: true,
-    createdAt: '2024-11-20',
-  },
-  {
-    id: 'proj-3',
-    collectorId: 'collector-1',
-    collectorName: 'Islamic Relief Fund',
-    title: 'Build a Shelter for Displaced Families',
-    description: 'Thousands of families have been displaced and need safe shelter. Help us build temporary and permanent housing solutions that provide dignity and protection from the elements.',
-    category: 'shelters',
-    goalAmount: 120000,
-    raisedAmount: 67200,
-    image: '/images/shelter.jpg',
-    donors: [
-      { id: 'd4', donorId: 'donor-1', donorName: 'Ahmed K.', projectId: 'proj-3', projectTitle: 'Build a Shelter for Displaced Families', amount: 5000, platformFee: 250, tip: 100, totalPaid: 5350, createdAt: '2024-12-08' },
-    ],
-    featured: true,
-    createdAt: '2024-11-25',
-  },
-  {
-    id: 'proj-4',
-    collectorId: 'collector-3',
-    collectorName: 'Bright Futures Org',
-    title: 'Support Our Orphanage — Education & Care',
-    description: 'Our orphanage cares for 120 children, providing education, meals, healthcare, and a loving environment. Your donations help us keep the lights on and give these children a brighter future.',
-    category: 'orphanages',
-    goalAmount: 40000,
-    raisedAmount: 28000,
-    image: '/images/orphanage.jpg',
-    donors: [
-      { id: 'd5', donorId: 'donor-2', donorName: 'Sara M.', projectId: 'proj-4', projectTitle: 'Support Our Orphanage — Education & Care', amount: 300, platformFee: 15, tip: 5, totalPaid: 320, createdAt: '2024-12-12' },
-    ],
-    featured: false,
-    createdAt: '2024-12-01',
-  },
-  {
-    id: 'proj-5',
-    collectorId: 'collector-2',
-    collectorName: 'Umrah Assistance Foundation',
-    title: 'Clean Water Wells for Rural Communities',
-    description: 'Access to clean water is a basic human right. This project funds the construction of water wells in rural areas where families walk miles daily for contaminated water.',
-    category: 'zakaat',
-    goalAmount: 30000,
-    raisedAmount: 12600,
-    image: '/images/water-project.jpg',
-    donors: [],
-    featured: false,
-    createdAt: '2024-12-05',
-  },
-];
-
-const seedDonations: DonationRecord[] = [
-  { id: 'd1', donorId: 'donor-1', donorName: 'Ahmed K.', projectId: 'proj-1', projectTitle: 'Zakaat Fund for Families in Need', amount: 500, platformFee: 25, tip: 10, totalPaid: 535, createdAt: '2024-12-01' },
-  { id: 'd2', donorId: 'donor-2', donorName: 'Sara M.', projectId: 'proj-1', projectTitle: 'Zakaat Fund for Families in Need', amount: 1000, platformFee: 50, tip: 20, totalPaid: 1070, createdAt: '2024-12-05' },
-  { id: 'd3', donorId: 'donor-3', donorName: 'Omar H.', projectId: 'proj-2', projectTitle: 'Sponsor Umrah for Elderly Pilgrims', amount: 2000, platformFee: 100, tip: 50, totalPaid: 2150, createdAt: '2024-12-10' },
-  { id: 'd4', donorId: 'donor-1', donorName: 'Ahmed K.', projectId: 'proj-3', projectTitle: 'Build a Shelter for Displaced Families', amount: 5000, platformFee: 250, tip: 100, totalPaid: 5350, createdAt: '2024-12-08' },
-  { id: 'd5', donorId: 'donor-2', donorName: 'Sara M.', projectId: 'proj-4', projectTitle: 'Support Our Orphanage — Education & Care', amount: 300, platformFee: 15, tip: 5, totalPaid: 320, createdAt: '2024-12-12' },
-];
-
-// Simple password store (simulating auth — NOT for production)
-const passwords: Record<string, string> = {
-  'ahmed@example.com': 'password123',
-  'sara@example.com': 'password123',
-  'omar@example.com': 'password123',
-};
-
-const seedUsers: User[] = [
-  { id: 'donor-1', name: 'Ahmed K.', email: 'ahmed@example.com', role: 'donor', createdAt: '2024-10-01' },
-  { id: 'donor-2', name: 'Sara M.', email: 'sara@example.com', role: 'donor', createdAt: '2024-10-15' },
-  { id: 'donor-3', name: 'Omar H.', email: 'omar@example.com', role: 'donor', createdAt: '2024-11-01' },
+  }
 ];
 
 // ----- STORE CREATION -----
@@ -193,139 +124,192 @@ const seedUsers: User[] = [
 export const useStore = create<AppStore>((set, get) => ({
   // Initial state
   currentUser: null,
-  users: seedUsers,
-  projects: seedProjects,
-  donations: seedDonations,
+  users: [],
+  projects: seedProjects, // Starts with seed data until Firebase loads
+  donations: [],
   sidebarOpen: false,
   searchQuery: '',
 
-  // Sign up a new user
-  signup: (userData) => {
-    const { users } = get();
-    
-    // Check if email already exists
-    if (users.find(u => u.email === userData.email)) {
-      return { success: false, error: 'An account with this email already exists.' };
+  // ==========================================
+  // 1. DATABASE & AUTH INITIALIZATION
+  // ==========================================
+  initDatabase: () => {
+    // A. Listen for Auth Changes (Keeps user logged in on refresh)
+    onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+        if (userDoc.exists()) {
+          set({ currentUser: userDoc.data() as User });
+        }
+      } else {
+        set({ currentUser: null });
+      }
+    });
+
+    // B. Listen for real-time Project updates
+    onSnapshot(collection(db, 'projects'), (snapshot) => {
+      const liveProjects = snapshot.docs.map(doc => doc.data() as Project);
+      // If database has projects, show them. Otherwise fallback to seed data.
+      set({ projects: liveProjects.length > 0 ? liveProjects : seedProjects });
+    });
+
+    // C. Listen for real-time Donation updates
+    onSnapshot(collection(db, 'donations'), (snapshot) => {
+      const liveDonations = snapshot.docs.map(doc => doc.data() as DonationRecord);
+      set({ donations: liveDonations });
+    });
+  },
+
+  // ==========================================
+  // 2. AUTHENTICATION
+  // ==========================================
+  signup: async (userData) => {
+    try {
+      const password = userData.password || 'password123'; // Fallback if UI doesn't pass it yet
+      
+      const userCredential = await createUserWithEmailAndPassword(auth, userData.email, password);
+      const firebaseUser = userCredential.user;
+
+      const newUser: User = {
+        id: firebaseUser.uid,
+        name: userData.name,
+        email: userData.email,
+        role: userData.role,
+        phone: userData.phone || '',
+        organization: userData.organization || '',
+        createdAt: new Date().toISOString(),
+      };
+
+      await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
+      
+      set({ currentUser: newUser });
+      return { success: true };
+    } catch (error: any) {
+      console.error("Signup Error:", error);
+      return { success: false, error: error.message };
     }
-    
-    const newUser: User = {
-      ...userData,
-      id: uuidv4(),
-      createdAt: new Date().toISOString(),
-    };
-    
-    // Store password (simulation only)
-    passwords[userData.email] = 'password123';
-    
-    set(state => ({
-      users: [...state.users, newUser],
-      currentUser: newUser,
-    }));
-    
-    return { success: true };
   },
 
-  // Log in an existing user
-  login: (email, _password, role) => {
-    const { users } = get();
-    const user = users.find(u => u.email === email && u.role === role);
-    
-    if (!user) {
-      return { success: false, error: 'No account found with these credentials.' };
+  login: async (email, password, role) => {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+
+      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data() as User;
+        
+        if (userData.role !== role) {
+          await signOut(auth);
+          return { success: false, error: `This email is registered as a ${userData.role}.` };
+        }
+
+        set({ currentUser: userData });
+        return { success: true };
+      }
+      return { success: false, error: 'User profile data not found.' };
+    } catch (error: any) {
+      console.error("Login Error:", error);
+      return { success: false, error: 'Invalid email or password.' };
     }
-    
-    set({ currentUser: user });
-    return { success: true };
   },
 
-  // Log out
-  logout: () => {
-    set({ currentUser: null });
+  logout: async () => {
+    try {
+      await signOut(auth);
+      set({ currentUser: null });
+    } catch (error) {
+      console.error("Logout Error:", error);
+    }
   },
 
-  // Create a new project (collector only)
-  createProject: (projectData) => {
+  // ==========================================
+  // 3. CLOUD DATA ACTIONS
+  // ==========================================
+  createProject: async (projectData) => {
     const { currentUser, projects } = get();
     
     if (!currentUser || currentUser.role !== 'collector') {
       return { success: false, error: 'Only collectors can create projects.' };
     }
     
-    // Check 3-project limit
     const userProjects = projects.filter(p => p.collectorId === currentUser.id);
     if (userProjects.length >= 3) {
-      return { success: false, error: 'You have reached the maximum of 3 projects. Please manage existing projects before creating new ones.' };
+      return { success: false, error: 'You have reached the maximum of 3 projects.' };
     }
     
-    const newProject: Project = {
-      ...projectData,
-      id: uuidv4(),
-      collectorId: currentUser.id,
-      collectorName: currentUser.name,
-      raisedAmount: 0,
-      donors: [],
-      featured: false,
-      createdAt: new Date().toISOString(),
-    };
-    
-    set(state => ({
-      projects: [...state.projects, newProject],
-    }));
-    
-    return { success: true };
+    try {
+      const newProjectRef = doc(collection(db, 'projects'));
+      
+      const newProject: Project = {
+        ...projectData,
+        id: newProjectRef.id,
+        collectorId: currentUser.id,
+        collectorName: currentUser.name,
+        raisedAmount: 0,
+        donors: [],
+        featured: false,
+        createdAt: new Date().toISOString(),
+      };
+      
+      await setDoc(newProjectRef, newProject);
+      return { success: true };
+    } catch (error: any) {
+      console.error("Project Creation Error:", error);
+      return { success: false, error: 'Failed to create project.' };
+    }
   },
 
-  // Make a donation to a project
-  makeDonation: (projectId, amount, tip) => {
+  makeDonation: async (projectId, amount, tip) => {
     const { currentUser, projects } = get();
     
-    if (!currentUser) {
-      return { success: false, error: 'Please log in to make a donation.' };
-    }
+    if (!currentUser) return { success: false, error: 'Please log in to make a donation.' };
     
     const project = projects.find(p => p.id === projectId);
-    if (!project) {
-      return { success: false, error: 'Project not found.' };
+    if (!project) return { success: false, error: 'Project not found.' };
+    
+    try {
+      const platformFee = amount * 0.05;
+      const totalPaid = amount + platformFee + tip;
+      
+      const newDonationRef = doc(collection(db, 'donations'));
+      
+      const donation: DonationRecord = {
+        id: newDonationRef.id,
+        donorId: currentUser.id,
+        donorName: currentUser.name,
+        projectId,
+        projectTitle: project.title,
+        amount,
+        platformFee,
+        tip,
+        totalPaid,
+        createdAt: new Date().toISOString(),
+      };
+      
+      await setDoc(newDonationRef, donation);
+      
+      const projectRef = doc(db, 'projects', projectId);
+      await updateDoc(projectRef, {
+        raisedAmount: project.raisedAmount + amount,
+        donors: [...project.donors, donation]
+      });
+      
+      return { success: true };
+    } catch (error: any) {
+      console.error("Donation Error:", error);
+      return { success: false, error: 'Donation failed to process.' };
     }
-    
-    const platformFee = amount * 0.05; // 5% platform fee
-    const totalPaid = amount + platformFee + tip;
-    
-    const donation: DonationRecord = {
-      id: uuidv4(),
-      donorId: currentUser.id,
-      donorName: currentUser.name,
-      projectId,
-      projectTitle: project.title,
-      amount,
-      platformFee,
-      tip,
-      totalPaid,
-      createdAt: new Date().toISOString(),
-    };
-    
-    set(state => ({
-      donations: [...state.donations, donation],
-      projects: state.projects.map(p =>
-        p.id === projectId
-          ? {
-              ...p,
-              raisedAmount: p.raisedAmount + amount,
-              donors: [...p.donors, donation],
-            }
-          : p
-      ),
-    }));
-    
-    return { success: true };
   },
 
-  // Toggle sidebar
+  // ==========================================
+  // 4. UI ACTIONS
+  // ==========================================
   toggleSidebar: () => {
     set(state => ({ sidebarOpen: !state.sidebarOpen }));
   },
 
-  // Update search query
   setSearchQuery: (query) => {
     set({ searchQuery: query });
   },
